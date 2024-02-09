@@ -1,0 +1,10 @@
+﻿services:
+  roocodeannouncer:
+    build:
+      context: .
+      dockerfile: RooCodeAnnouncer/Dockerfile
+    environment:
+      "ConnectionStrings__Default": "/app/local.db"
+    volumes:
+      - "./db/local.db:/app/local.db"
+      - "./settings/appsettings.json:/app/appsettings.json"
