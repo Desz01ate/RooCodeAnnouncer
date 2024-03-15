@@ -31,8 +31,10 @@ public class LinePublisher : INotificationHandler<NewCodeNotification>
             _httpClient.DefaultRequestHeaders.Remove("Authorization");
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
+            var itemText = string.Join('\n', notification.Items.Select(r => $"{r.Name} x {r.Quantity:N0}"));
+
             using var formData = new MultipartFormDataContent();
-            using var stringContent = new StringContent($"\n{notification.Code}\n\nItems: {notification.Items}");
+            using var stringContent = new StringContent($"\n{notification.Code}\n\nItems:\n{itemText}");
             formData.Add(stringContent, "message");
 
             var res = await _httpClient.PostAsync(string.Empty, formData, cancellationToken);

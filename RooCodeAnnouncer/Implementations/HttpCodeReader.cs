@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Web;
 using HtmlAgilityPack;
 using RooCodeAnnouncer.Abstractions;
@@ -7,7 +8,7 @@ using RooCodeAnnouncer.Models;
 
 namespace RooCodeAnnouncer.Implementations;
 
-public class HttpCodeReader : ICodeReader
+public partial class HttpCodeReader : ICodeReader
 {
     private readonly HttpClient _httpClient;
 
@@ -45,7 +46,27 @@ public class HttpCodeReader : ICodeReader
             var isNew = left.SelectSingleNode(".//em")?.InnerText == "(New Code)";
             var item = right.InnerText;
 
-            yield return new ItemCode(code, HttpUtility.HtmlDecode(item), isNew);
+            var regex = itemSplitterRegex();
+            var normalizedItemTexts =
+                regex.Split(item)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Replace("x ", string.Empty))
+                    .Select(s => s.Trim())
+                    .ToImmutableArray();
+            var names =
+                normalizedItemTexts.Where((_, i) => i % 2 != 0)
+                    .Select(HttpUtility.HtmlDecode);
+            var quantities =
+                normalizedItemTexts.Where((_, i) => i % 2 == 0)
+                    .Select(s => s.Replace(",", string.Empty));
+            var zip = names.Zip(quantities)
+                .Select(pair =>
+                    new Reward(pair.First, int.TryParse(pair.Second, out var num) ? num : -1));
+
+            yield return new ItemCode(code, HttpUtility.HtmlDecode(item), isNew, zip.ToArray());
         }
     }
+
+    [GeneratedRegex(@"([0-9,]+(?=\sx){0,1}\s)")]
+    private static partial Regex itemSplitterRegex();
 }

@@ -49,7 +49,7 @@ public class CodeReaderHostedService(
                 continue;
             }
 
-            var itemCode = new PublishedItemCode(code.Code, code.Rewards);
+            var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
             publishedCodes.Add(itemCode);
 
             if (code.IsNew)

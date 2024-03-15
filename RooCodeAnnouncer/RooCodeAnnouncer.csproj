@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="DSharpPlus" Version="4.4.6" />
         <PackageReference Include="MediatR" Version="12.2.0"/>
         <PackageReference Include="HtmlAgilityPack" Version="1.11.58"/>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0"/>

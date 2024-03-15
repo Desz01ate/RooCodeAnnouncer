@@ -1,3 +1,5 @@
 ﻿namespace RooCodeAnnouncer.Models;
 
-public record struct ItemCode(string Code, string Rewards, bool IsNew);
+public record struct Reward(string Name, int? Quantity);
+
+public record struct ItemCode(string Code, string RawRewards, bool IsNew, Reward[] Rewards);
