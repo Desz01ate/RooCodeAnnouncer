@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Configuration;
 using RooCodeAnnouncer.Configurations;
-using RooCodeAnnouncer.Events;
+using RooCodeAnnouncer.Contracts.Events;
 
 namespace RooCodeAnnouncer.Publishers;
 

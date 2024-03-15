@@ -1,4 +1,4 @@
-﻿using RooCodeAnnouncer.Models;
+﻿using RooCodeAnnouncer.Contracts;
 
 namespace RooCodeAnnouncer.Abstractions;
 

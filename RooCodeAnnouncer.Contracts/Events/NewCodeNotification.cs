@@ -1,6 +1,5 @@
 ﻿using MediatR;
-using RooCodeAnnouncer.Models;
 
-namespace RooCodeAnnouncer.Events;
+namespace RooCodeAnnouncer.Contracts.Events;
 
 public sealed record NewCodeNotification(string Code, Reward[] Items) : INotification;

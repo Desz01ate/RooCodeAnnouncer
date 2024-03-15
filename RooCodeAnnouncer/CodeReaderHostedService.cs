@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RooCodeAnnouncer.Abstractions;
-using RooCodeAnnouncer.Events;
+using RooCodeAnnouncer.Contracts.Events;
 using RooCodeAnnouncer.Infrastructure;
 using RooCodeAnnouncer.Infrastructure.Entities;
 

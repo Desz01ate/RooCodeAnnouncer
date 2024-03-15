@@ -1,4 +1,4 @@
-﻿namespace RooCodeAnnouncer.Models;
+﻿namespace RooCodeAnnouncer.Contracts;
 
 public record struct Reward(string Name, int? Quantity);
 
