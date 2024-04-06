@@ -43,7 +43,7 @@ public partial class HttpCodeReader : ICodeReader
             var right = children[1];
 
             var code = left.SelectSingleNode(".//strong").InnerText;
-            var isNew = left.SelectSingleNode(".//em")?.InnerText == "(New Code)";
+            var isNew = left.InnerHtml.Contains("(New Code)");
             var item = right.InnerText;
 
             var regex = ItemSplitterRegex();
