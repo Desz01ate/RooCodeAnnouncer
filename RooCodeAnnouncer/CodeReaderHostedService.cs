@@ -52,12 +52,9 @@ public class CodeReaderHostedService(
             var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
             publishedCodes.Add(itemCode);
 
-            if (code.IsNew)
-            {
-                await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
+            await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
 
-                logger.LogInformation("Code {Id} published", code.Code);
-            }
+            logger.LogInformation("Code {Id} published", code.Code);
         }
 
         if (publishedCodes.Any())
