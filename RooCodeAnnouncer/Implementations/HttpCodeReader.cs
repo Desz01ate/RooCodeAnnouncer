@@ -67,6 +67,6 @@ public partial class HttpCodeReader : ICodeReader
         }
     }
 
-    [GeneratedRegex(@"([0-9,]+(?=\sx){0,1}\s)")]
+    [GeneratedRegex(@"([0-9,]+(?=\sx){0,1}\s)(?!\()")]
     private static partial Regex ItemSplitterRegex();
 }
