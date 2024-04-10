@@ -1,4 +1,5 @@
-﻿using DSharpPlus;
+﻿using System.Diagnostics;
+using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 
@@ -6,7 +7,7 @@ namespace RooCodeAnnouncer.Discord;
 
 public abstract class DiscordClientAbstract : IAsyncDisposable
 {
-    protected readonly DiscordClient Client;
+    public readonly DiscordClient Client;
 
     private readonly List<DiscordChannel> _channels;
 
@@ -105,13 +106,19 @@ public abstract class DiscordClientAbstract : IAsyncDisposable
         var guild = e.Guild;
 
         lock (this._channels)
-            this._channels.RemoveAll(x => x.GuildId == guild.Id);
+        {
+            this.Perform(() => this._channels.RemoveAll(x => x.GuildId == guild.Id));
+        }
 
         lock (this._members)
-            this._members.RemoveAll(x => x.Guild.Id == guild.Id);
+        {
+            this.Perform(() => this._members.RemoveAll(x => x.Guild.Id == guild.Id));
+        }
 
         lock (this._guilds)
-            this._guilds.Remove(guild);
+        {
+            this.Perform(() => this._guilds.Remove(guild));
+        }
 
         return Task.CompletedTask;
     }
@@ -123,13 +130,19 @@ public abstract class DiscordClientAbstract : IAsyncDisposable
         var channels = guild.Channels.Select(x => x.Value);
 
         lock (this._channels)
-            this._channels.AddRange(channels);
+        {
+            this.Perform(() => this._channels.AddRange(channels));
+        }
 
         lock (this._members)
-            this._members.AddRange(guild.Members.Select(x => x.Value));
+        {
+            this.Perform(() => this._members.AddRange(guild.Members.Select(x => x.Value)));
+        }
 
         lock (this._guilds)
-            this._guilds.Add(guild);
+        {
+            this.Perform(() => this._guilds.Add(guild));
+        }
 
         return Task.CompletedTask;
     }
@@ -143,13 +156,19 @@ public abstract class DiscordClientAbstract : IAsyncDisposable
             var channels = guild.Channels.Select(x => x.Value);
 
             lock (this._channels)
-                this._channels.AddRange(channels);
+            {
+                this.Perform(() => this._channels.AddRange(channels));
+            }
 
             lock (this._members)
-                this._members.AddRange(guild.Members.Select(x => x.Value));
+            {
+                this.Perform(() => this._members.AddRange(guild.Members.Select(x => x.Value)));
+            }
 
             lock (this._guilds)
-                this._guilds.Add(guild);
+            {
+                this.Perform(() => this._guilds.Add(guild));
+            }
         }
 
         return Task.CompletedTask;
@@ -169,5 +188,17 @@ public abstract class DiscordClientAbstract : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await this.Client.DisconnectAsync();
+    }
+
+    private void Perform(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e.Message);
+        }
     }
 }
