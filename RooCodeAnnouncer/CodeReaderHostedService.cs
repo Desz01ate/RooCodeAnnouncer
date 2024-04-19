@@ -41,20 +41,27 @@ public class CodeReaderHostedService(
 
         await foreach (var code in codeReader.ReadAsync())
         {
-            var codeExist = await dbContext.PublishedItemCodes.AnyAsync(c => c.Id == code.Code);
-
-            if (codeExist)
+            try
             {
-                logger.LogWarning("Code {Id} already published, skip", code.Code);
-                continue;
+                var codeExist = await dbContext.PublishedItemCodes.AnyAsync(c => c.Id == code.Code);
+
+                if (codeExist)
+                {
+                    logger.LogWarning("Code {Id} already published, skip", code.Code);
+                    continue;
+                }
+
+                var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
+                publishedCodes.Add(itemCode);
+
+                await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
+
+                logger.LogInformation("Code {Id} published", code.Code);
             }
-
-            var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
-            publishedCodes.Add(itemCode);
-
-            await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
-
-            logger.LogInformation("Code {Id} published", code.Code);
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred for {Code}", code.Code);
+            }
         }
 
         if (publishedCodes.Any())
