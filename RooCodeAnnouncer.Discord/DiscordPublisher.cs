@@ -55,8 +55,9 @@ public class DiscordPublisher : INotificationHandler<NewCodeNotification>,
                 }
             }
 
+            var code = notification.Code.Replace('\n', '\0').Replace('\r', ' ');
             var itemText = string.Join(" ", notification.Items.Select(r => $"**{r.Name}** x {r.Quantity:N0}"));
-            var content = $":star:CODE: `{notification.Code.PadRight(30, '\0')}` Items: {itemText}";
+            var content = $":star:CODE: `{code.PadRight(30, '\0')}` Items: {itemText}";
 
             await channel.SendMessageAsync(content);
         }

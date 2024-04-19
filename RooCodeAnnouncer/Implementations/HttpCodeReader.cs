@@ -1,10 +1,12 @@
 ﻿using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 using HtmlAgilityPack;
 using RooCodeAnnouncer.Abstractions;
 using RooCodeAnnouncer.Contracts;
+using RooCodeAnnouncer.Utils;
 
 namespace RooCodeAnnouncer.Implementations;
 
@@ -30,7 +32,7 @@ public partial class HttpCodeReader : ICodeReader
         // skip header row
         var rows = htmlDoc.DocumentNode.SelectNodes("//tr").Skip(1);
 
-        foreach (var row in rows.Reverse())
+        foreach (var row in rows)
         {
             var children = row.ChildNodes.ToImmutableArray();
 
@@ -42,31 +44,28 @@ public partial class HttpCodeReader : ICodeReader
             var left = children[0];
             var right = children[1];
 
-            var code = left.SelectSingleNode(".//strong").InnerText;
+            var node = left.FirstChild;
+            var sb = new StringBuilder(node.InnerHtml);
+            while (node.NextSibling is not null)
+            {
+                node = node.NextSibling;
+                var text = node.InnerText;
+
+                if (text.Contains("new code", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    continue;
+                }
+
+                sb.AppendLine(node.InnerText);
+            }
+
+            var code = sb.ToString();
             var isNew = left.InnerHtml.Contains("(New Code)");
             var item = right.InnerText;
 
-            var regex = ItemSplitterRegex();
-            var normalizedItemTexts =
-                regex.Split(item)
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Select(s => s.Replace("x ", string.Empty))
-                    .Select(s => s.Trim())
-                    .ToImmutableArray();
-            var names =
-                normalizedItemTexts.Where((_, i) => i % 2 != 0)
-                    .Select(HttpUtility.HtmlDecode);
-            var quantities =
-                normalizedItemTexts.Where((_, i) => i % 2 == 0)
-                    .Select(s => s.Replace(",", string.Empty));
-            var rewards = names.Zip(quantities)
-                .Select(pair =>
-                    new Reward(pair.First, int.TryParse(pair.Second, out var num) ? num : -1));
+            var rewards = ItemCodeUtils.Parse(item);
 
             yield return new ItemCode(code, HttpUtility.HtmlDecode(item), isNew, rewards.ToArray());
         }
     }
-
-    [GeneratedRegex(@"([0-9,]+(?=\sx){0,1}\s)(?!\()")]
-    private static partial Regex ItemSplitterRegex();
 }
