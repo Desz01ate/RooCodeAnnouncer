@@ -37,9 +37,7 @@ public class LinePublisher : INotificationHandler<NewCodeNotification>
             using var stringContent = new StringContent($"\n{notification.Code}\n\nItems:\n{itemText}");
             formData.Add(stringContent, "message");
 
-            var res = await _httpClient.PostAsync(string.Empty, formData, cancellationToken);
-
-            res.EnsureSuccessStatusCode();
+            await _httpClient.PostAsync(string.Empty, formData, cancellationToken);
         }
     }
 }

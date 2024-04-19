@@ -1,7 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 using HtmlAgilityPack;
 using RooCodeAnnouncer.Abstractions;
@@ -12,6 +11,7 @@ namespace RooCodeAnnouncer.Implementations;
 
 public partial class HttpCodeReader : ICodeReader
 {
+    private readonly string[] RemovedKeywords = ["&nbsp", "new code"];
     private readonly HttpClient _httpClient;
 
     public HttpCodeReader(IHttpClientFactory httpClientFactory)
@@ -45,13 +45,17 @@ public partial class HttpCodeReader : ICodeReader
             var right = children[1];
 
             var node = left.FirstChild;
-            var sb = new StringBuilder(node.InnerHtml);
+            var sb = new StringBuilder(node.InnerText);
             while (node.NextSibling is not null)
             {
                 node = node.NextSibling;
                 var text = node.InnerText;
 
-                if (text.Contains("new code", StringComparison.CurrentCultureIgnoreCase))
+                var hasForbiddenKeyword =
+                    RemovedKeywords.Any(kw => text.Contains(kw, StringComparison.CurrentCultureIgnoreCase));
+                var underBracket = text.StartsWith('(') && text.EndsWith(')');
+
+                if (hasForbiddenKeyword || underBracket)
                 {
                     continue;
                 }
@@ -59,7 +63,7 @@ public partial class HttpCodeReader : ICodeReader
                 sb.AppendLine(node.InnerText);
             }
 
-            var code = sb.ToString();
+            var code = sb.ToString().Trim('\r', '\n');
             var isNew = left.InnerHtml.Contains("(New Code)");
             var item = right.InnerText;
 
