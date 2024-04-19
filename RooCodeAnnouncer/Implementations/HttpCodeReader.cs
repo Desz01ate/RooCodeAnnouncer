@@ -32,7 +32,7 @@ public partial class HttpCodeReader : ICodeReader
         // skip header row
         var rows = htmlDoc.DocumentNode.SelectNodes("//tr").Skip(1);
 
-        foreach (var row in rows)
+        foreach (var row in rows.Reverse())
         {
             var children = row.ChildNodes.ToImmutableArray();
 
