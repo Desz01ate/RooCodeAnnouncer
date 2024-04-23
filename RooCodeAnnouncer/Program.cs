@@ -57,7 +57,7 @@ builder.ConfigureServices(
         if (!string.IsNullOrWhiteSpace(discordToken))
         {
             assemblies.Add(typeof(DiscordPublisher).Assembly);
-            services.TryAddSingleton(new CodeAnnouncerDiscordClient(discordToken));
+            services.TryAddSingleton(sp => new CodeAnnouncerDiscordClient(discordToken, sp));
             services.AddHostedService<DiscordBotHostingService>();
         }
 
