@@ -16,21 +16,29 @@ public class CodeReaderHostedService(
     IMediator mediator,
     ILogger<CodeReaderHostedService> logger) : IHostedService
 {
-    private const string JobId = "code_reader_recurring";
+    private const string CodeReaderJobId = "code_reader_recurring";
+    private const string ZenyShopSnapTimeJobId = "zeny_shop_snap_time_recurring";
+    private const string EndOfWeekJobId = "eow_recurring";
+    private const string EndOfMonthJobId = "eom_recurring";
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Fire immediately after restart
         ReadCodeAndPublishAsync();
 
-        RecurringJob.AddOrUpdate(JobId, () => ReadCodeAndPublishAsync(), Cron.Hourly);
+        RecurringJob.AddOrUpdate(CodeReaderJobId, () => ReadCodeAndPublishAsync(), Cron.Hourly);
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_1", () => NotifySnapTimeAsync(), Cron.Daily(5)); // At 12:00 GMT+7
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_2", () => NotifySnapTimeAsync(), Cron.Daily(9)); // At 16:00 GMT+7
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_3", () => NotifySnapTimeAsync(), Cron.Daily(13)); // At 20:00 GMT+7
+        RecurringJob.AddOrUpdate(EndOfWeekJobId, () => NotifyEndOfWeekAsync(), Cron.Weekly(DayOfWeek.Sunday, 5));
+        RecurringJob.AddOrUpdate(EndOfMonthJobId, () => NotifyEndOfMonthAsync(), Cron.Daily(5));
 
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        RecurringJob.RemoveIfExists(JobId);
+        RecurringJob.RemoveIfExists(CodeReaderJobId);
 
         return Task.CompletedTask;
     }
@@ -70,6 +78,33 @@ public class CodeReaderHostedService(
 
             dbContext.AddRange(distinctCodes);
             await dbContext.SaveChangesAsync();
+        }
+    }
+
+    public async Task NotifySnapTimeAsync()
+    {
+        await mediator.Publish(new ZenyShopSnapTimeNotification());
+
+        logger.LogInformation("Published {MessageType}", nameof(ZenyShopSnapTimeNotification));
+    }
+
+    public async Task NotifyEndOfWeekAsync()
+    {
+        await mediator.Publish(new EndOfWeekNotification());
+        
+        logger.LogInformation("Published {MessageType}", nameof(EndOfWeekNotification));
+    }
+
+    public async Task NotifyEndOfMonthAsync()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var tomorrow = now.AddDays(1);
+
+        if (now.Month < tomorrow.Month)
+        {
+            await mediator.Publish(new EndOfMonthNotification());
+
+            logger.LogInformation("Published {MessageType}", nameof(EndOfMonthNotification));
         }
     }
 }
