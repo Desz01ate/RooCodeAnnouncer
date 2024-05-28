@@ -29,7 +29,7 @@ builder.ConfigureServices(
     {
         var assemblies = new List<Assembly>
         {
-            typeof(Program).Assembly,
+            typeof(LinePublisher).Assembly,
         };
 
         var connectionString = ctx.Configuration.GetConnectionString("Default");

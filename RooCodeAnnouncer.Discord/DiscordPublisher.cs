@@ -1,10 +1,13 @@
-﻿using MediatR;
+﻿using DSharpPlus.Entities;
+using MediatR;
 using Microsoft.Extensions.Logging;
+using RooCodeAnnouncer.Contracts;
 using RooCodeAnnouncer.Contracts.Events;
 
 namespace RooCodeAnnouncer.Discord;
 
-public class DiscordPublisher : INotificationHandler<NewCodeNotification>,
+public class DiscordPublisher :
+    INotificationHandler<NewCodeNotification>,
     INotificationHandler<NewCodeToSpecificChannelNotification>
 {
     private const string ChannelName = "ragnarok_origins_item_code";
@@ -55,11 +58,9 @@ public class DiscordPublisher : INotificationHandler<NewCodeNotification>,
                 }
             }
 
-            var code = notification.Code.Replace('\n', '\0').Replace('\r', ' ');
-            var itemText = string.Join(" ", notification.Items.Select(r => $"**{r.Name}** x {r.Quantity:N0}"));
-            var content = $":star:CODE: `{code.PadRight(30, '\0')}` Items: {itemText}";
+            var embed = CreateEmbed(notification.Code, notification.Items);
 
-            await channel.SendMessageAsync(content);
+            await channel.SendMessageAsync(embed);
         }
     }
 
@@ -107,9 +108,31 @@ public class DiscordPublisher : INotificationHandler<NewCodeNotification>,
             }
         }
 
-        var itemText = string.Join(" ", notification.Items.Select(r => $"**{r.Name}** x {r.Quantity:N0}"));
-        var content = $":star:CODE: `{notification.Code.PadRight(30, '\0')}` Items: {itemText}";
+        var embed = CreateEmbed(notification.Code, notification.Items);
 
-        await channel.SendMessageAsync(content);
+        await channel.SendMessageAsync(embed);
+    }
+
+    private static DiscordEmbed CreateEmbed(string itemCode, IEnumerable<Reward> items)
+    {
+        var code = itemCode.Replace('\n', '\0').Replace('\r', ' ');
+        var itemText = string.Join("\n",
+            items.Select(r => $":small_orange_diamond: **{r.Name}** x {r.Quantity:N0}"));
+
+        var embedBuilder = new DiscordEmbedBuilder
+        {
+            Title = $"Code: **{code}**",
+            Description = itemText,
+            Footer = new DiscordEmbedBuilder.EmbedFooter
+            {
+                Text =
+                    "Brought to you by DeszoLatte with <3",
+            },
+            Color = new Optional<DiscordColor>(DiscordColor.SpringGreen),
+        };
+
+        var embed = embedBuilder.Build();
+
+        return embed;
     }
 }

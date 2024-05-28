@@ -21,15 +21,20 @@ public class CodeReaderHostedService(
     private const string EndOfWeekJobId = "eow_recurring";
     private const string EndOfMonthJobId = "eom_recurring";
 
+    private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         // Fire immediately after restart
         ReadCodeAndPublishAsync();
 
         RecurringJob.AddOrUpdate(CodeReaderJobId, () => ReadCodeAndPublishAsync(), Cron.Hourly);
-        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_1", () => NotifySnapTimeAsync(), Cron.Daily(5)); // At 12:00 GMT+7
-        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_2", () => NotifySnapTimeAsync(), Cron.Daily(9)); // At 16:00 GMT+7
-        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_3", () => NotifySnapTimeAsync(), Cron.Daily(13)); // At 20:00 GMT+7
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_1", () => NotifySnapTimeAsync(),
+            Cron.Daily(5)); // At 12:00 GMT+7
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_2", () => NotifySnapTimeAsync(),
+            Cron.Daily(9)); // At 16:00 GMT+7
+        RecurringJob.AddOrUpdate($"{ZenyShopSnapTimeJobId}_3", () => NotifySnapTimeAsync(),
+            Cron.Daily(13)); // At 20:00 GMT+7
         RecurringJob.AddOrUpdate(EndOfWeekJobId, () => NotifyEndOfWeekAsync(), Cron.Weekly(DayOfWeek.Sunday, 5));
         RecurringJob.AddOrUpdate(EndOfMonthJobId, () => NotifyEndOfMonthAsync(), Cron.Daily(5));
 
@@ -45,39 +50,48 @@ public class CodeReaderHostedService(
 
     public async Task ReadCodeAndPublishAsync()
     {
-        var publishedCodes = new List<PublishedItemCode>();
+        await this.semaphore.WaitAsync();
 
-        await foreach (var code in codeReader.ReadAsync())
+        try
         {
-            try
-            {
-                var codeExist = await dbContext.PublishedItemCodes.AnyAsync(c => c.Id == code.Code);
+            var publishedCodes = new List<PublishedItemCode>();
 
-                if (codeExist)
+            await foreach (var code in codeReader.ReadAsync())
+            {
+                try
                 {
-                    logger.LogWarning("Code {Id} already published, skip", code.Code);
-                    continue;
+                    var codeExist = await dbContext.PublishedItemCodes.AnyAsync(c => c.Id == code.Code);
+
+                    if (codeExist)
+                    {
+                        logger.LogWarning("Code {Id} already published, skip", code.Code);
+                        continue;
+                    }
+
+                    var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
+                    publishedCodes.Add(itemCode);
+
+                    await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
+
+                    logger.LogInformation("Code {Id} published", code.Code);
                 }
-
-                var itemCode = new PublishedItemCode(code.Code, code.RawRewards);
-                publishedCodes.Add(itemCode);
-
-                await mediator.Publish(new NewCodeNotification(code.Code, code.Rewards));
-
-                logger.LogInformation("Code {Id} published", code.Code);
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "An error occurred for {Code}", code.Code);
+                }
             }
-            catch (Exception ex)
+
+            if (publishedCodes.Any())
             {
-                logger.LogError(ex, "An error occurred for {Code}", code.Code);
+                var distinctCodes = publishedCodes.DistinctBy(c => c.Id);
+
+                dbContext.AddRange(distinctCodes);
+                await dbContext.SaveChangesAsync();
             }
         }
-
-        if (publishedCodes.Any())
+        finally
         {
-            var distinctCodes = publishedCodes.DistinctBy(c => c.Id);
-
-            dbContext.AddRange(distinctCodes);
-            await dbContext.SaveChangesAsync();
+            this.semaphore.Release();
         }
     }
 
@@ -91,7 +105,7 @@ public class CodeReaderHostedService(
     public async Task NotifyEndOfWeekAsync()
     {
         await mediator.Publish(new EndOfWeekNotification());
-        
+
         logger.LogInformation("Published {MessageType}", nameof(EndOfWeekNotification));
     }
 
