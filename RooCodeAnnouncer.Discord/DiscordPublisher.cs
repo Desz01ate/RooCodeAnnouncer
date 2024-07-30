@@ -1,5 +1,6 @@
 ﻿using DSharpPlus.Entities;
 using MediatR;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using RooCodeAnnouncer.Contracts;
 using RooCodeAnnouncer.Contracts.Events;
@@ -14,6 +15,12 @@ public class DiscordPublisher :
     private readonly CodeAnnouncerDiscordClient _client;
     private readonly ILogger<DiscordPublisher> _logger;
 
+    private readonly MemoryCache cache = new(new MemoryDistributedCacheOptions
+    {
+        // 20 MB
+        SizeLimit = 20 * 1024 * 1024,
+    });
+
     public DiscordPublisher(CodeAnnouncerDiscordClient client, ILogger<DiscordPublisher> logger)
     {
         this._client = client;
@@ -22,6 +29,11 @@ public class DiscordPublisher :
 
     public async Task Handle(NewCodeNotification notification, CancellationToken cancellationToken)
     {
+        if (cache.TryGetValue(notification.Code, out _))
+        {
+            return;
+        }
+
         var servers = this._client.Guilds;
 
         var retryCount = 0;
@@ -41,8 +53,8 @@ public class DiscordPublisher :
         {
             var channel =
                 server.Channels
-                    .FirstOrDefault(c => c.Value.Name == ChannelName)
-                    .Value;
+                      .FirstOrDefault(c => c.Value.Name == ChannelName)
+                      .Value;
 
             if (channel is null)
             {
@@ -58,9 +70,18 @@ public class DiscordPublisher :
                 }
             }
 
+            var last10Messages = await channel.GetMessagesAsync(10);
+
+            if (last10Messages.Any(m => m.Embeds.Any(e => e.Title.Contains(notification.Code))))
+            {
+                return;
+            }
+
             var embed = CreateEmbed(notification.Code, notification.Items);
 
             await channel.SendMessageAsync(embed);
+
+            cache.Set(notification.Code, notification, DateTimeOffset.UtcNow.AddDays(1));
         }
     }
 
@@ -91,8 +112,8 @@ public class DiscordPublisher :
 
         var channel =
             server.Channels
-                .FirstOrDefault(c => c.Value.Name == ChannelName)
-                .Value;
+                  .FirstOrDefault(c => c.Value.Name == ChannelName)
+                  .Value;
 
         if (channel is null)
         {
