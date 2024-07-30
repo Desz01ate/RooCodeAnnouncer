@@ -15,11 +15,7 @@ public class DiscordPublisher :
     private readonly CodeAnnouncerDiscordClient _client;
     private readonly ILogger<DiscordPublisher> _logger;
 
-    private readonly MemoryCache cache = new(new MemoryDistributedCacheOptions
-    {
-        // 20 MB
-        SizeLimit = 20 * 1024 * 1024,
-    });
+    private readonly MemoryCache cache = new(new MemoryDistributedCacheOptions());
 
     public DiscordPublisher(CodeAnnouncerDiscordClient client, ILogger<DiscordPublisher> logger)
     {
@@ -31,6 +27,7 @@ public class DiscordPublisher :
     {
         if (cache.TryGetValue(notification.Code, out _))
         {
+            this._logger.LogInformation("{Code} is in a cache, skipp", notification.Code);
             return;
         }
 
@@ -74,6 +71,7 @@ public class DiscordPublisher :
 
             if (last10Messages.Any(m => m.Embeds.Any(e => e.Title.Contains(notification.Code))))
             {
+                this._logger.LogInformation("{Code} is already announced, skip", notification.Code);
                 return;
             }
 
