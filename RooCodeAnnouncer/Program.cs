@@ -63,6 +63,8 @@ builder.ConfigureServices(
 
         services.AddMediatR(
             c => c.RegisterServicesFromAssemblies(assemblies.ToArray()));
+
+        services.AddMemoryCache();
     });
 
 var app = builder.Build();

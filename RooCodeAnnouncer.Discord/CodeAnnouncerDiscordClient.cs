@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
+using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
 using Newtonsoft.Json;
 
@@ -38,15 +39,15 @@ public class DiscordCommandModule : ApplicationCommandModule
             var formKey = uri.AbsolutePath.Split('/').Last();
             var parameters =
                 uri.Query
-                    .TrimStart('?')
-                    .Split('&')
-                    .Select(s =>
-                    {
-                        var split = s.Split('=');
+                   .TrimStart('?')
+                   .Split('&')
+                   .Select(s =>
+                   {
+                       var split = s.Split('=');
 
-                        return new KeyValuePair<string, string>(split[0], split[1]);
-                    })
-                    .ToImmutableDictionary();
+                       return new KeyValuePair<string, string>(split[0], split[1]);
+                   })
+                   .ToImmutableDictionary();
 
             var surveySubmitUrl =
                 new Uri(
@@ -103,6 +104,36 @@ public class DiscordCommandModule : ApplicationCommandModule
         catch (Exception e)
         {
             await context.CreateResponseAsync("Sorry but I am unable to complete the survey for you :(", true);
+        }
+    }
+
+    [SlashCommand("cleanup", "Clean up a redundant code announcement")]
+    public async Task CleanupAsync(InteractionContext context)
+    {
+        const string channelName = "ragnarok_origins_item_code";
+
+        var servers = context.Client.Guilds;
+
+        foreach (var server in servers)
+        {
+            var channel = server.Value.Channels.SingleOrDefault(c => c.Value.Name == channelName).Value;
+
+            if (channel is null)
+            {
+                continue;
+            }
+
+            var allCodes = new List<string>();
+
+            IReadOnlyList<DiscordMessage> messages;
+
+            do
+            {
+                messages = await channel.GetMessagesAsync();
+
+                var codes = messages.SelectMany(m => m.Embeds.Select(e => e.Title));
+                allCodes.AddRange(codes);
+            } while (messages.Count > 0);
         }
     }
 }

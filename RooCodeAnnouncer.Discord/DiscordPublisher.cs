@@ -13,21 +13,24 @@ public class DiscordPublisher :
 {
     private const string ChannelName = "ragnarok_origins_item_code";
     private readonly CodeAnnouncerDiscordClient _client;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<DiscordPublisher> _logger;
 
-    private readonly MemoryCache cache = new(new MemoryDistributedCacheOptions());
-
-    public DiscordPublisher(CodeAnnouncerDiscordClient client, ILogger<DiscordPublisher> logger)
+    public DiscordPublisher(
+        CodeAnnouncerDiscordClient client,
+        IMemoryCache cache,
+        ILogger<DiscordPublisher> logger)
     {
         this._client = client;
+        this._cache = cache;
         this._logger = logger;
     }
 
     public async Task Handle(NewCodeNotification notification, CancellationToken cancellationToken)
     {
-        if (cache.TryGetValue(notification.Code, out _))
+        if (_cache.TryGetValue(notification.Code, out _))
         {
-            this._logger.LogInformation("{Code} is in a cache, skipp", notification.Code);
+            this._logger.LogInformation("{Code} is in a cache, skip", notification.Code);
             return;
         }
 
@@ -79,7 +82,7 @@ public class DiscordPublisher :
 
             await channel.SendMessageAsync(embed);
 
-            cache.Set(notification.Code, notification, DateTimeOffset.UtcNow.AddDays(1));
+            _cache.Set(notification.Code, notification, new MemoryCacheEntryOptions().SetAbsoluteExpiration(DateTimeOffset.UtcNow.AddDays(1)));
         }
     }
 
