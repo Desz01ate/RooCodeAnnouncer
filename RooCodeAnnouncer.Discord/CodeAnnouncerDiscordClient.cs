@@ -51,7 +51,7 @@ public class DiscordCommandModule : ApplicationCommandModule
 
             var surveySubmitUrl =
                 new Uri(
-                    $"https://survey.roglobal.com/tduck-api/user/form/data/public/create?{uri.Query}");
+                    $"https://survey.roglobal.com/tduck-api/user/form/data/public/create?{uri.Query.TrimStart('?')}");
 
             var payload = new
             {
@@ -87,7 +87,7 @@ public class DiscordCommandModule : ApplicationCommandModule
                 },
                 wxUserInfo = new { },
                 originalData = new { },
-                extValue = parameters["ext"],
+                extValue = parameters.TryGetValue("ext", out var extValue) ? extValue : string.Empty,
                 formType = 1
             };
 
